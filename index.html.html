@@ -1,0 +1,1388 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Casa — Property Hub</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.19.0/dist/tabler-icons.min.css">
+<script src="https://cdn.jsdelivr.net/npm/firebase@10.12.0/firebase-app-compat.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/firebase@10.12.0/firebase-database-compat.min.js"></script>
+<style>
+:root{
+  --cream:#F6F1E9;--warm:#FDFAF5;
+  --terra:#B86040;--terra-l:#F0DDD4;--terra-d:#8A4530;
+  --sage:#6A8A5C;--sage-l:#D2DFCC;--sage-d:#4A6340;
+  --plum:#8B6B9E;--gold:#C4913A;--gold-l:#F4E8D2;
+  --brown:#2C1E12;--brown-m:#5A3C28;--brown-t:#9A7A68;
+  --bdr:rgba(44,30,18,.10);--bdr-m:rgba(44,30,18,.20);
+  --r:14px;--rsm:8px;--rxs:6px;
+  --sh:0 2px 16px rgba(44,30,18,.07);--tx:.18s ease;
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:-apple-system,'Helvetica Neue',Arial,sans-serif;background:var(--cream);color:var(--brown);min-height:100vh;font-size:15px;line-height:1.5;}
+h2{font-family:Georgia,serif;font-weight:normal;}
+
+#loading-screen{min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1rem;}
+.spinner{width:32px;height:32px;border:3px solid var(--terra-l);border-top-color:var(--terra);border-radius:50%;animation:spin .8s linear infinite;}
+@keyframes spin{to{transform:rotate(360deg);}}
+.loading-brand{font-family:Georgia,serif;font-size:2rem;color:var(--terra);letter-spacing:.04em;}
+
+#login-screen{min-height:100vh;display:none;flex-direction:column;align-items:center;justify-content:center;padding:2rem;}
+.l-logo{font-family:Georgia,serif;font-size:3rem;color:var(--terra);letter-spacing:.04em;text-align:center;}
+.l-tag{font-size:.75rem;letter-spacing:.14em;text-transform:uppercase;color:var(--brown-t);margin-top:.2rem;text-align:center;margin-bottom:2.5rem;}
+.l-card{background:var(--warm);border-radius:var(--r);border:1px solid var(--bdr);padding:2rem;width:100%;max-width:340px;box-shadow:var(--sh);}
+.l-hint{font-family:Georgia,serif;font-size:1.1rem;color:var(--brown);text-align:center;margin-bottom:.35rem;}
+.l-sub{font-size:.78rem;color:var(--brown-t);text-align:center;margin-bottom:1.4rem;}
+#passcode{width:100%;padding:.78rem 1rem;background:var(--cream);border:1px solid var(--bdr-m);border-radius:var(--rsm);font-family:inherit;font-size:1rem;color:var(--brown);outline:none;text-align:center;letter-spacing:.06em;transition:var(--tx);margin-bottom:.6rem;}
+#passcode:focus{border-color:var(--terra);background:var(--warm);}
+.l-err{font-size:.78rem;color:var(--terra-d);text-align:center;margin-bottom:.55rem;min-height:1rem;}
+.btn-login{background:var(--terra);color:#fff;border:none;border-radius:var(--rsm);padding:.75rem;font-family:inherit;font-size:.95rem;cursor:pointer;transition:var(--tx);width:100%;font-weight:500;}
+.btn-login:hover{background:var(--terra-d);}
+
+#app{display:none;flex-direction:column;min-height:100vh;max-width:680px;margin:0 auto;}
+header{background:var(--warm);border-bottom:1px solid var(--bdr);padding:.85rem 1.25rem;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:10;}
+.h-brand{font-family:Georgia,serif;font-size:1.5rem;color:var(--terra);letter-spacing:.03em;}
+.h-right{display:flex;align-items:center;gap:.7rem;}
+.h-av{width:36px;height:36px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:.88rem;color:#fff;font-weight:600;flex-shrink:0;}
+.h-rl{font-size:.82rem;color:var(--brown-m);font-weight:500;}
+.btn-out{background:none;border:1px solid var(--bdr-m);border-radius:var(--rxs);padding:.28rem .6rem;font-size:.76rem;color:var(--brown-t);cursor:pointer;font-family:inherit;transition:var(--tx);}
+.btn-out:hover{background:var(--terra-l);color:var(--terra);border-color:var(--terra);}
+
+main{flex:1;padding:1.25rem;padding-bottom:5.5rem;}
+nav.bnav{position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:100%;max-width:680px;background:var(--warm);border-top:1px solid var(--bdr);display:flex;z-index:10;}
+.ntab{flex:1;display:flex;flex-direction:column;align-items:center;padding:.55rem .3rem;cursor:pointer;border:none;background:none;color:var(--brown-t);font-family:inherit;font-size:.62rem;gap:.16rem;transition:var(--tx);border-top:2px solid transparent;}
+.ntab i{font-size:1.15rem;}
+.ntab.active{color:var(--terra);border-top-color:var(--terra);}
+
+.view{display:none;}
+.view.active{display:block;}
+.sh{display:flex;align-items:center;justify-content:space-between;margin-bottom:.9rem;}
+.st{font-family:Georgia,serif;font-size:1.2rem;color:var(--brown);}
+.st-sm{font-size:1rem!important;}
+
+.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:.5rem;margin-bottom:1.1rem;}
+.stat{background:var(--warm);border-radius:var(--rsm);border:1px solid var(--bdr);padding:.85rem .7rem;text-align:center;}
+.s-num{font-family:Georgia,serif;font-size:1.7rem;color:var(--terra);}
+.s-lbl{font-size:.68rem;color:var(--brown-t);text-transform:uppercase;letter-spacing:.05em;margin-top:.1rem;}
+
+.pgrid{display:grid;grid-template-columns:repeat(2,1fr);gap:.7rem;margin-bottom:.9rem;}
+.pcard{background:var(--warm);border-radius:var(--r);border:1px solid var(--bdr);padding:1rem;box-shadow:var(--sh);}
+.pcard.cs{opacity:.55;border-style:dashed;background:var(--cream);}
+.p-ico{width:38px;height:38px;border-radius:var(--rsm);background:var(--terra-l);display:flex;align-items:center;justify-content:center;margin-bottom:.6rem;color:var(--terra);font-size:1.1rem;}
+.p-nm{font-family:Georgia,serif;font-size:.9rem;color:var(--brown);margin-bottom:.28rem;}
+.p-meta{font-size:.76rem;color:var(--brown-t);}
+.ibadge{display:inline-flex;align-items:center;gap:.22rem;font-size:.7rem;padding:.18rem .48rem;border-radius:99px;margin-top:.45rem;}
+.ibadge.has{background:#FDF0E8;color:var(--terra);}
+.ibadge.ok{background:var(--sage-l);color:var(--sage-d);}
+
+.sp{display:inline-flex;align-items:center;font-size:.71rem;padding:.2rem .58rem;border-radius:99px;font-weight:500;}
+.s-open{background:var(--gold-l);color:#8A6010;}
+.s-in_progress{background:var(--terra-l);color:var(--terra-d);}
+.s-done{background:var(--sage-l);color:var(--sage-d);}
+.s-needs_upgrade{background:var(--terra-l);color:var(--terra-d);}
+.s-approved{background:var(--gold-l);color:#8A6010;}
+.s-ordered{background:#E6EEF8;color:#2A4A7A;}
+.s-installed{background:var(--sage-l);color:var(--sage-d);}
+.s-cs{background:var(--bdr);color:var(--brown-t);}
+
+.issue{background:var(--warm);border-radius:var(--rsm);border:1px solid var(--bdr);border-left-width:3px;padding:.9rem;margin-bottom:.5rem;cursor:pointer;transition:var(--tx);}
+.issue:hover{border-right-color:var(--terra);border-top-color:var(--terra);border-bottom-color:var(--terra);}
+.p-high{border-left-color:#D85A30;}
+.p-medium{border-left-color:var(--gold);}
+.p-low{border-left-color:var(--sage);}
+.i-hdr{display:flex;align-items:flex-start;justify-content:space-between;gap:.5rem;margin-bottom:.35rem;}
+.i-title{font-size:.9rem;font-weight:600;color:var(--brown);flex:1;}
+.i-meta{font-size:.73rem;color:var(--brown-t);display:flex;gap:.6rem;flex-wrap:wrap;}
+.i-desc{font-size:.82rem;color:var(--brown-m);margin-top:.3rem;line-height:1.4;}
+
+.fbar{display:flex;gap:.4rem;margin-bottom:.9rem;flex-wrap:wrap;}
+.fc{padding:.3rem .75rem;border-radius:99px;border:1px solid var(--bdr-m);background:var(--cream);font-size:.76rem;cursor:pointer;transition:var(--tx);color:var(--brown-m);font-family:inherit;}
+.fc.active{background:var(--terra);border-color:var(--terra);color:#fff;}
+.fc:hover:not(.active){border-color:var(--terra);color:var(--terra);}
+
+.card{background:var(--warm);border-radius:var(--r);border:1px solid var(--bdr);padding:1.25rem;margin-bottom:.75rem;box-shadow:var(--sh);}
+.fg{margin-bottom:.85rem;}
+label{display:block;font-size:.72rem;font-weight:600;color:var(--brown-m);letter-spacing:.05em;text-transform:uppercase;margin-bottom:.32rem;}
+input[type=text],input[type=number],textarea,select{width:100%;padding:.65rem .88rem;background:var(--cream);border:1px solid var(--bdr-m);border-radius:var(--rsm);font-family:inherit;font-size:.9rem;color:var(--brown);transition:var(--tx);outline:none;}
+input[type=text]:focus,input[type=number]:focus,textarea:focus,select:focus{border-color:var(--terra);background:var(--warm);}
+textarea{min-height:76px;resize:vertical;}
+
+.btn-p{background:var(--terra);color:#fff;border:none;border-radius:var(--rsm);padding:.68rem 1.4rem;font-family:inherit;font-size:.9rem;cursor:pointer;transition:var(--tx);width:100%;font-weight:500;display:flex;align-items:center;justify-content:center;gap:.4rem;}
+.btn-p:hover{background:var(--terra-d);}
+.btn-s{background:var(--cream);color:var(--brown-m);border:1px solid var(--bdr-m);border-radius:var(--rsm);padding:.38rem .85rem;font-family:inherit;font-size:.8rem;cursor:pointer;transition:var(--tx);}
+.btn-s:hover{background:var(--terra-l);color:var(--terra);border-color:var(--terra);}
+.btn-done{background:var(--sage-l);color:var(--sage-d);border:1px solid var(--sage);border-radius:var(--rsm);padding:.38rem .85rem;font-family:inherit;font-size:.8rem;cursor:pointer;display:flex;align-items:center;gap:.3rem;}
+.btn-done:hover{background:var(--sage-d);color:#fff;}
+.btn-icon{background:none;border:none;color:var(--brown-t);cursor:pointer;padding:.25rem;transition:var(--tx);font-size:1rem;line-height:1;display:inline-flex;}
+.btn-icon:hover{color:var(--terra);}
+
+.pmrow{background:var(--warm);border-radius:var(--rsm);border:1px solid var(--bdr);padding:.9rem;margin-bottom:.5rem;display:flex;align-items:center;gap:.85rem;}
+.pmrow.cs{opacity:.6;}
+.pm-ico{width:34px;height:34px;border-radius:var(--rsm);background:var(--terra-l);display:flex;align-items:center;justify-content:center;color:var(--terra);font-size:1rem;flex-shrink:0;}
+.pm-nm{font-weight:600;font-size:.9rem;color:var(--brown);}
+.pm-meta{font-size:.75rem;color:var(--brown-t);margin-top:.1rem;}
+
+.note{background:var(--warm);border-radius:var(--rsm);border:1px solid var(--bdr);padding:.9rem;margin-bottom:.5rem;}
+.n-author{font-weight:600;font-size:.82rem;color:var(--brown);}
+.n-text{font-size:.87rem;color:var(--brown-m);line-height:1.5;margin-top:.18rem;}
+.n-time{font-size:.7rem;color:var(--brown-t);margin-top:.32rem;}
+
+.ditem{background:var(--warm);border-radius:var(--rsm);border:1px solid var(--bdr);padding:.9rem;margin-bottom:.5rem;display:flex;align-items:flex-start;gap:.7rem;}
+.d-ico{color:var(--terra);font-size:1.15rem;flex-shrink:0;margin-top:.1rem;}
+.d-nm{font-weight:600;font-size:.9rem;color:var(--brown);}
+.d-sub{font-size:.73rem;color:var(--brown-t);margin-top:.1rem;}
+.d-notes{font-size:.78rem;color:var(--brown-t);margin-top:.15rem;}
+.d-sel{padding:.28rem .45rem;font-size:.75rem;background:var(--cream);border:1px solid var(--bdr-m);border-radius:var(--rxs);color:var(--brown-m);font-family:inherit;cursor:pointer;margin-top:.35rem;}
+
+.psel{display:flex;gap:.42rem;flex-wrap:wrap;margin-bottom:1rem;}
+.pchip{padding:.32rem .82rem;border-radius:99px;border:1px solid var(--bdr-m);background:var(--cream);font-size:.78rem;cursor:pointer;transition:var(--tx);color:var(--brown-m);font-family:inherit;}
+.pchip.active{background:var(--terra);border-color:var(--terra);color:#fff;}
+.pchip:hover:not(.active){border-color:var(--terra);color:var(--terra);}
+
+.prow{background:var(--warm);border-radius:var(--rsm);border:1px solid var(--bdr);padding:.9rem;margin-bottom:.5rem;display:flex;align-items:center;gap:.85rem;}
+.prow.cs{opacity:.55;}
+.pr-ico{width:36px;height:36px;border-radius:var(--rsm);background:var(--terra-l);display:flex;align-items:center;justify-content:center;color:var(--terra);font-size:1.05rem;flex-shrink:0;}
+
+/* INVENTORY */
+.inv-item{background:var(--warm);border-radius:var(--rsm);border:1px solid var(--bdr);padding:.9rem;margin-bottom:.5rem;display:flex;align-items:flex-start;gap:.75rem;}
+.inv-ico{width:36px;height:36px;border-radius:var(--rsm);background:var(--terra-l);display:flex;align-items:center;justify-content:center;color:var(--terra);font-size:1rem;flex-shrink:0;}
+.inv-info{flex:1;}
+.inv-nm{font-weight:600;font-size:.9rem;color:var(--brown);}
+.inv-prop{font-size:.73rem;color:var(--brown-t);margin-top:.1rem;}
+.inv-qty{font-size:.8rem;color:var(--brown-m);margin-top:.2rem;}
+.inv-tags{display:flex;gap:.35rem;flex-wrap:wrap;margin-top:.4rem;}
+.cat-tag{font-size:.68rem;padding:.18rem .5rem;border-radius:99px;background:var(--cream);border:1px solid var(--bdr-m);color:var(--brown-t);}
+.restock-tag{font-size:.68rem;padding:.18rem .5rem;border-radius:99px;background:#FDF0E8;color:var(--terra);border:1px solid var(--terra-l);}
+.inv-actions{display:flex;flex-direction:column;gap:.3rem;flex-shrink:0;align-items:flex-end;}
+
+.empty{text-align:center;padding:2.5rem 1rem;color:var(--brown-t);}
+.empty i{font-size:2.2rem;margin-bottom:.6rem;display:block;color:var(--terra-l);}
+.empty p{font-size:.86rem;}
+.divhr{border:none;border-top:1px solid var(--bdr);margin:.9rem 0;}
+
+#mwrap{display:none;position:fixed;inset:0;background:rgba(44,30,18,.48);z-index:100;align-items:flex-end;justify-content:center;}
+#mwrap.open{display:flex;}
+#mbox{background:var(--warm);border-radius:var(--r) var(--r) 0 0;padding:1.5rem;width:100%;max-width:680px;max-height:88vh;overflow-y:auto;}
+.mhdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;}
+.mtitle{font-family:Georgia,serif;font-size:1.05rem;color:var(--brown);}
+.mclose{background:none;border:none;font-size:1.2rem;color:var(--brown-t);cursor:pointer;padding:.2rem;line-height:1;}
+.mclose:hover{color:var(--terra);}
+.m-acts{display:flex;gap:.5rem;flex-wrap:wrap;margin-top:.5rem;}
+
+#toast{position:fixed;bottom:5.5rem;left:50%;transform:translateX(-50%);background:var(--brown);color:#fff;padding:.6rem 1.2rem;border-radius:99px;font-size:.83rem;opacity:0;transition:opacity .3s;z-index:200;pointer-events:none;white-space:nowrap;}
+#toast.show{opacity:1;}
+@media(max-width:380px){.pgrid{grid-template-columns:1fr;}}
+
+/* CALENDAR */
+.cal-empty{text-align:center;padding:2rem;color:var(--brown-t);font-size:.86rem;}
+.booking-card{background:var(--warm);border-radius:var(--r);border:1px solid var(--bdr);border-left:4px solid var(--terra);padding:1rem;margin-bottom:.75rem;box-shadow:var(--sh);}
+.booking-card.past{opacity:.5;border-left-color:var(--brown-t);}
+.booking-card.today{border-left-color:var(--sage);background:var(--sage-l);}
+.bk-prop{font-family:Georgia,serif;font-size:.95rem;color:var(--brown);font-weight:600;margin-bottom:.35rem;}
+.bk-dates{display:flex;gap:.5rem;flex-wrap:wrap;margin-bottom:.35rem;}
+.bk-date{display:flex;align-items:center;gap:.3rem;font-size:.78rem;color:var(--brown-m);}
+.bk-date i{color:var(--terra);font-size:.85rem;}
+.bk-notes{font-size:.82rem;color:var(--brown-t);line-height:1.5;margin-top:.35rem;padding-top:.35rem;border-top:1px solid var(--bdr);}
+.bk-badge{display:inline-flex;align-items:center;font-size:.7rem;padding:.18rem .5rem;border-radius:99px;background:var(--terra-l);color:var(--terra-d);margin-bottom:.4rem;}
+
+/* ── CALENDAR GRID ── */
+.cal-nav{display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;}
+.cal-month{font-family:Georgia,serif;font-size:1.1rem;color:var(--brown);}
+.cal-nav-btn{background:none;border:1px solid var(--bdr-m);border-radius:var(--rxs);padding:.3rem .7rem;cursor:pointer;font-family:inherit;font-size:.82rem;color:var(--brown-m);transition:var(--tx);}
+.cal-nav-btn:hover{background:var(--terra-l);color:var(--terra);border-color:var(--terra);}
+.cal-toggle{display:flex;gap:.4rem;margin-bottom:.9rem;}
+.cal-tog-btn{padding:.3rem .78rem;border-radius:99px;border:1px solid var(--bdr-m);background:var(--cream);font-size:.76rem;cursor:pointer;transition:var(--tx);color:var(--brown-m);font-family:inherit;}
+.cal-tog-btn.active{background:var(--terra);border-color:var(--terra);color:#fff;}
+.cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:2px;background:var(--bdr);border-radius:var(--rsm);overflow:hidden;}
+.cal-dow{background:var(--warm);padding:.5rem 0;text-align:center;font-size:.68rem;font-weight:600;color:var(--brown-t);text-transform:uppercase;letter-spacing:.05em;}
+/* cal-cell moved */
+.cal-cell.other-month{background:var(--cream);opacity:.6;}
+.cal-cell.today .cal-day-num{background:var(--terra);color:#fff;border-radius:50%;width:22px;height:22px;display:flex;align-items:center;justify-content:center;}
+.cal-day-num{font-size:.75rem;color:var(--brown-t);margin-bottom:.2rem;width:22px;height:22px;display:flex;align-items:center;justify-content:center;margin:0 auto .15rem;}
+/* cal-bar replaced by cal-pill */
+
+.prop-color-0{background:#B86040;}
+.prop-color-1{background:#6A8A5C;}
+.prop-color-2{background:#8B6B9E;}
+.prop-color-3{background:#C4913A;}
+.prop-color-4{background:#4A7A8A;}
+.prop-color-5{background:#A05070;}
+.prop-color-6{background:#5A8060;}
+.cal-more{font-size:.6rem;color:var(--brown-t);padding:1px 3px;cursor:pointer;}
+
+.cal-cell{background:var(--warm);min-height:56px;padding:.3rem .15rem;position:relative;cursor:pointer;transition:var(--tx);text-align:center;}
+.cal-cell:hover{background:var(--terra-l);}
+.cal-cell.selected{background:var(--terra-l);}
+.cal-pill{border-radius:4px;padding:1px 4px;font-size:.6rem;font-weight:600;color:#fff;margin-bottom:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.5;cursor:pointer;}
+.cal-dots{display:flex;gap:3px;padding:2px 3px;flex-wrap:wrap;justify-content:center;}
+.cal-dot{width:7px;height:7px;border-radius:50%;display:inline-block;flex-shrink:0;}
+.cal-dot-half{width:7px;height:7px;border-radius:50% 50% 0 0 / 100% 100% 0 0;display:inline-block;flex-shrink:0;opacity:0.6;}
+.day-detail{margin-top:.75rem;border-radius:var(--r);overflow:hidden;}
+.day-detail-hdr{background:var(--terra);color:#fff;padding:.6rem 1rem;font-family:Georgia,serif;font-size:.9rem;display:flex;align-items:center;justify-content:space-between;}
+.day-detail-item{background:var(--warm);border-bottom:1px solid var(--bdr);padding:.75rem 1rem;display:flex;align-items:flex-start;gap:.75rem;}
+.day-detail-item:last-child{border-bottom:none;border-radius:0 0 var(--r) var(--r);}
+.ddi-color{width:10px;height:10px;border-radius:50%;flex-shrink:0;margin-top:3px;}
+.ddi-info{flex:1;}
+.ddi-prop{font-weight:600;font-size:.88rem;color:var(--brown);}
+.ddi-dates{font-size:.75rem;color:var(--brown-t);margin-top:.15rem;}
+.ddi-notes{font-size:.78rem;color:var(--brown-m);margin-top:.25rem;line-height:1.4;}
+.ddi-acts{display:flex;gap:.3rem;flex-shrink:0;}
+</style>
+</head>
+<body>
+
+<div id="loading-screen">
+  <div class="loading-brand">Casa</div>
+  <div class="spinner"></div>
+</div>
+
+<div id="login-screen">
+  <div class="l-logo">Casa</div>
+  <div class="l-tag">Property Management Hub</div>
+  <div class="l-card">
+    <div class="l-hint">Welcome back</div>
+    <div class="l-sub">Enter your passcode to sign in</div>
+    <input type="password" id="passcode" placeholder="Passcode..." autocomplete="off" onkeydown="if(event.key==='Enter')doLogin()">
+    <div class="l-err" id="l-err"></div>
+    <button class="btn-login" onclick="doLogin()">Sign In</button>
+  </div>
+</div>
+
+<div id="app">
+  <header>
+    <div class="h-brand">Casa</div>
+    <div class="h-right">
+      <span class="h-rl" id="hrl"></span>
+      
+    </div>
+  </header>
+  <main>
+    <!-- ADMIN -->
+    <div class="view" data-view="overview" data-user="admin">
+      <div class="sh"><h2 class="st">Overview</h2></div>
+      <div class="stats" id="a-stats"></div>
+      <div class="sh"><h2 class="st st-sm">Properties</h2><div style="display:flex;gap:.5rem"><button class="btn-s" onclick="openCalModal()"><i class="ti ti-calendar-plus" aria-hidden="true"></i> Add Booking</button><button class="btn-s" onclick="openManageProps()"><i class="ti ti-settings" aria-hidden="true"></i> Manage</button></div></div>
+      <div class="pgrid" id="a-pgrid"></div>
+      <div class="sh" style="margin-top:.9rem"><h2 class="st st-sm">Recent Notes</h2></div>
+      <div id="a-notes-prev"></div>
+    </div>
+    <div class="view" data-view="issues" data-user="admin">
+      <div class="sh"><h2 class="st">All Issues</h2><span id="a-iss-ct" style="font-size:.8rem;color:var(--brown-t)"></span></div>
+      <div class="fbar" id="a-fbar"></div><div id="a-iss-list"></div>
+    </div>
+    <div class="view" data-view="notes" data-user="admin">
+      <div class="sh"><h2 class="st">Team Notes</h2></div>
+      <div class="card" style="margin-bottom:.9rem">
+        <div class="fg" style="margin-bottom:.7rem"><label>Post a note</label><textarea id="a-note-txt" placeholder="Share an update..."></textarea></div>
+        <button class="btn-p" onclick="addNote('a')"><i class="ti ti-send" aria-hidden="true"></i> Post</button>
+      </div>
+      <div id="a-notes-list"></div>
+    </div>
+    <div class="view" data-view="inventory" data-user="admin">
+      <div class="sh"><h2 class="st">Inventory</h2><button class="btn-p" style="width:auto;padding:.4rem .9rem;font-size:.82rem" onclick="openInvModal()"><i class="ti ti-plus" aria-hidden="true"></i> Add</button></div>
+      <div class="psel" id="a-inv-psel"></div>
+      <div class="fbar" id="a-inv-cbar"></div>
+      <div id="a-inv-list"></div>
+    </div>
+
+    <!-- MARI -->
+    <div class="view" data-view="overview" data-user="mari">
+      <div class="sh"><h2 class="st">Overview</h2></div>
+      <div class="stats" id="m-stats"></div>
+      <div class="sh"><h2 class="st st-sm">Properties</h2><div style="display:flex;gap:.5rem"><button class="btn-s" onclick="openCalModal()"><i class="ti ti-calendar-plus" aria-hidden="true"></i> Add Booking</button><button class="btn-s" onclick="openManageProps()"><i class="ti ti-settings" aria-hidden="true"></i> Manage</button></div></div>
+      <div class="pgrid" id="m-pgrid"></div>
+      <div class="sh" style="margin-top:.9rem"><h2 class="st st-sm">Recent Notes</h2></div>
+      <div id="m-notes-prev"></div>
+    </div>
+    <div class="view" data-view="issues" data-user="mari">
+      <div class="sh"><h2 class="st">All Issues</h2><span id="m-iss-ct" style="font-size:.8rem;color:var(--brown-t)"></span></div>
+      <div class="fbar" id="m-fbar"></div><div id="m-iss-list"></div>
+    </div>
+    <div class="view" data-view="notes" data-user="mari">
+      <div class="sh"><h2 class="st">Team Notes</h2></div>
+      <div class="card" style="margin-bottom:.9rem">
+        <div class="fg" style="margin-bottom:.7rem"><label>Post a note</label><textarea id="m-note-txt" placeholder="Share an update..."></textarea></div>
+        <button class="btn-p" onclick="addNote('m')"><i class="ti ti-send" aria-hidden="true"></i> Post</button>
+      </div>
+      <div id="m-notes-list"></div>
+    </div>
+    <div class="view" data-view="inventory" data-user="mari">
+      <div class="sh"><h2 class="st">Inventory</h2><button class="btn-p" style="width:auto;padding:.4rem .9rem;font-size:.82rem" onclick="openInvModal()"><i class="ti ti-plus" aria-hidden="true"></i> Add</button></div>
+      <div class="psel" id="m-inv-psel"></div>
+      <div class="fbar" id="m-inv-cbar"></div>
+      <div id="m-inv-list"></div>
+    </div>
+
+    <!-- LISA -->
+    <div class="view" data-view="report" data-user="lisa">
+      <div class="sh"><h2 class="st">Report an Issue</h2></div>
+      <div class="card">
+        <div class="fg"><label>Property</label><select id="l-prop"><option value="">Select property...</option></select></div>
+        <div class="fg"><label>What's the issue?</label><input type="text" id="l-title" placeholder="e.g. Broken kitchen faucet"></div>
+        <div class="fg"><label>Details</label><textarea id="l-desc" placeholder="Describe what you found..."></textarea></div>
+        <div class="fg"><label>Priority</label>
+          <select id="l-pri">
+            <option value="low">Low — Can wait</option>
+            <option value="medium" selected>Medium — This week</option>
+            <option value="high">High — Urgent</option>
+          </select>
+        </div>
+        <button class="btn-p" onclick="submitIssue()"><i class="ti ti-send" aria-hidden="true"></i> Submit Issue</button>
+      </div>
+    </div>
+    <div class="view" data-view="l-issues" data-user="lisa">
+      <div class="sh"><h2 class="st">Issues</h2></div>
+      <div class="fbar" id="l-fbar"></div><div id="l-iss-list"></div>
+    </div>
+    <div class="view" data-view="l-props" data-user="lisa">
+      <div class="sh"><h2 class="st">Properties</h2></div>
+      <div id="l-props-list"></div>
+    </div>
+    <div class="view" data-view="inventory" data-user="lisa">
+      <div class="sh"><h2 class="st">Inventory</h2><button class="btn-p" style="width:auto;padding:.4rem .9rem;font-size:.82rem" onclick="openInvModal()"><i class="ti ti-plus" aria-hidden="true"></i> Add</button></div>
+      <div class="psel" id="l-inv-psel"></div>
+      <div class="fbar" id="l-inv-cbar"></div>
+      <div id="l-inv-list"></div>
+    </div>
+
+    <!-- LISA: Notes -->
+    <div class="view" data-view="notes" data-user="lisa">
+      <div class="sh"><h2 class="st">Team Notes</h2></div>
+      <div class="card" style="margin-bottom:.9rem">
+        <div class="fg" style="margin-bottom:.7rem"><label>Post a note</label><textarea id="l-note-txt" placeholder="Share an update..."></textarea></div>
+        <button class="btn-p" onclick="addNote('l')"><i class="ti ti-send" aria-hidden="true"></i> Post</button>
+      </div>
+      <div id="l-notes-list"></div>
+    </div>
+    <!-- HALLYE -->
+    <div class="view" data-view="h-byprop" data-user="hallye">
+      <div class="sh"><h2 class="st">Decor by Property</h2></div>
+      <div class="psel" id="h-psel"></div>
+      <div id="h-decor-list"></div>
+      <button class="btn-p" style="margin-top:.75rem" onclick="openDecorModal()"><i class="ti ti-plus" aria-hidden="true"></i> Add Item</button>
+    </div>
+    <div class="view" data-view="h-all" data-user="hallye">
+      <div class="sh"><h2 class="st">All Decor Items</h2></div>
+      <div class="fbar" id="h-fbar"></div><div id="h-all-list"></div>
+    </div>
+    <div class="view" data-view="inventory" data-user="hallye">
+      <div class="sh"><h2 class="st">Inventory</h2><button class="btn-p" style="width:auto;padding:.4rem .9rem;font-size:.82rem" onclick="openInvModal()"><i class="ti ti-plus" aria-hidden="true"></i> Add</button></div>
+      <div class="psel" id="h-inv-psel"></div>
+      <div class="fbar" id="h-inv-cbar"></div>
+      <div id="h-inv-list"></div>
+    </div>
+
+    <!-- ROSA: Calendar -->
+    <div class="view" data-view="r-calendar" data-user="rosa">
+      <div class="sh"><h2 class="st">Calendar</h2></div>
+      
+      <div id="r-cal-wrap"></div>
+    </div>
+    <!-- ROSA: Report -->
+    <div class="view" data-view="report" data-user="rosa">
+      <div class="sh"><h2 class="st">Report an Issue</h2></div>
+      <div class="card">
+        <div class="fg"><label>Property</label><select id="r-prop"><option value="">Select property...</option></select></div>
+        <div class="fg"><label>What's the issue?</label><input type="text" id="r-title" placeholder="e.g. Broken towel rack"></div>
+        <div class="fg"><label>Details</label><textarea id="r-desc" placeholder="Describe what you found..."></textarea></div>
+        <div class="fg"><label>Priority</label>
+          <select id="r-pri">
+            <option value="low">Low — Can wait</option>
+            <option value="medium" selected>Medium — This week</option>
+            <option value="high">High — Urgent</option>
+          </select>
+        </div>
+        <button class="btn-p" onclick="submitIssueFor('r')"><i class="ti ti-send" aria-hidden="true"></i> Submit Issue</button>
+      </div>
+    </div>
+    <!-- ROSA: Inventory -->
+    <div class="view" data-view="inventory" data-user="rosa">
+      <div class="sh"><h2 class="st">Inventory</h2><button class="btn-p" style="width:auto;padding:.4rem .9rem;font-size:.82rem" onclick="openInvModal()"><i class="ti ti-plus" aria-hidden="true"></i> Add</button></div>
+      <div class="psel" id="r-inv-psel"></div>
+      <div class="fbar" id="r-inv-cbar"></div>
+      <div id="r-inv-list"></div>
+    </div>
+
+    <!-- ROSA: Invoice Submission -->
+    <div class="view" data-view="r-invoice" data-user="rosa">
+      <div class="sh"><h2 class="st">Submit Invoice</h2></div>
+      <div class="card">
+        <div class="fg"><label>Property</label><select id="ri-prop"><option value="">Select property...</option></select></div>
+        <div class="fg"><label>Date Cleaned</label><input type="text" id="ri-date" placeholder="MM/DD/YYYY"></div>
+        <div class="fg"><label>Cleaning Fee ($)</label><input type="number" id="ri-fee" placeholder="e.g. 150" min="0" step="0.01"></div>
+        <div class="fg"><label>Notes (optional)</label><textarea id="ri-notes" placeholder="e.g. Extra deep clean, holiday rate..."></textarea></div>
+        <button class="btn-p" onclick="submitInvoice()"><i class="ti ti-send" aria-hidden="true"></i> Submit Invoice</button>
+      </div>
+      <div id="ri-history"></div>
+    </div>
+
+    <!-- ADMIN: Invoices -->
+    <div class="view" data-view="a-invoices" data-user="admin">
+      <div class="sh"><h2 class="st">Rosa's Invoices</h2><button class="btn-p" style="width:auto;padding:.4rem .9rem;font-size:.82rem" onclick="printInvoices('admin')"><i class="ti ti-printer" aria-hidden="true"></i> Print</button></div>
+      <div id="a-invoice-list"></div>
+    </div>
+
+    <!-- MARI: Invoices -->
+    <div class="view" data-view="m-invoices" data-user="mari">
+      <div class="sh"><h2 class="st">Rosa's Invoices</h2><button class="btn-p" style="width:auto;padding:.4rem .9rem;font-size:.82rem" onclick="printInvoices('mari')"><i class="ti ti-printer" aria-hidden="true"></i> Print</button></div>
+      <div id="m-invoice-list"></div>
+    </div>
+
+    <!-- ADMIN: Calendar -->
+    <div class="view" data-view="calendar" data-user="admin">
+      <div class="sh"><h2 class="st">Calendar</h2><button class="btn-p" style="width:auto;padding:.4rem .9rem;font-size:.82rem" onclick="openCalModal()"><i class="ti ti-plus" aria-hidden="true"></i> Add Booking</button></div>
+      
+      <div id="a-cal-wrap"></div>
+    </div>
+    <!-- MARI: Calendar -->
+    <div class="view" data-view="calendar" data-user="mari">
+      <div class="sh"><h2 class="st">Calendar</h2><button class="btn-p" style="width:auto;padding:.4rem .9rem;font-size:.82rem" onclick="openCalModal()"><i class="ti ti-plus" aria-hidden="true"></i> Add Booking</button></div>
+      
+      <div id="m-cal-wrap"></div>
+    </div>
+    <!-- MARI: Report -->
+    <div class="view" data-view="report" data-user="mari">
+      <div class="sh"><h2 class="st">Report an Issue</h2></div>
+      <div class="card">
+        <div class="fg"><label>Property</label><select id="m-rp-prop"><option value="">Select property...</option></select></div>
+        <div class="fg"><label>What's the issue?</label><input type="text" id="m-rp-title" placeholder="e.g. Broken kitchen faucet"></div>
+        <div class="fg"><label>Details</label><textarea id="m-rp-desc" placeholder="Describe what you found..."></textarea></div>
+        <div class="fg"><label>Priority</label>
+          <select id="m-rp-pri">
+            <option value="low">Low — Can wait</option>
+            <option value="medium" selected>Medium — This week</option>
+            <option value="high">High — Urgent</option>
+          </select>
+        </div>
+        <button class="btn-p" onclick="submitIssueFor('m-rp')"><i class="ti ti-send" aria-hidden="true"></i> Submit Issue</button>
+      </div>
+    </div>
+    <!-- HALLYE: Notes -->
+    <div class="view" data-view="notes" data-user="hallye">
+      <div class="sh"><h2 class="st">Team Notes</h2></div>
+      <div class="card" style="margin-bottom:.9rem">
+        <div class="fg" style="margin-bottom:.7rem"><label>Post a note</label><textarea id="h-note-txt" placeholder="Share an update..."></textarea></div>
+        <button class="btn-p" onclick="addNote('h')"><i class="ti ti-send" aria-hidden="true"></i> Post</button>
+      </div>
+      <div id="h-notes-list"></div>
+    </div>
+  </main>
+  <nav class="bnav" id="bnav"></nav>
+</div>
+
+<div id="mwrap"><div id="mbox"></div></div>
+<div id="toast"></div>
+
+<script>
+firebase.initializeApp({
+  apiKey:"AIzaSyCqrqLYlRuVTJitMzfx2iztHuY4IjMHfQ4",
+  authDomain:"casa-c4647.firebaseapp.com",
+  databaseURL:"https://casa-c4647-default-rtdb.firebaseio.com",
+  projectId:"casa-c4647",
+  storageBucket:"casa-c4647.firebasestorage.app",
+  messagingSenderId:"617635113235",
+  appId:"1:617635113235:web:7a555ba227114e27e452e6"
+});
+const db=firebase.database();
+const ROOT='casa-hub';
+const iRef=db.ref(ROOT+'/issues');
+const nRef=db.ref(ROOT+'/notes');
+const dRef=db.ref(ROOT+'/decor');
+const pRef=db.ref(ROOT+'/properties');
+const invRef=db.ref(ROOT+'/inventory');
+const calRef=db.ref(ROOT+'/calendar');
+const invRef2=db.ref(ROOT+'/invoices');
+
+const USERS={
+  admin:{name:'Admin',role:'Full Access',color:'#3D2B1F',init:'A',id:'admin',
+    tabs:[{id:'overview',label:'Overview',icon:'ti-home'},{id:'calendar',label:'Calendar',icon:'ti-calendar'},{id:'a-invoices',label:'Invoices',icon:'ti-receipt'},{id:'issues',label:'Issues',icon:'ti-tool'},{id:'notes',label:'Notes',icon:'ti-message'},{id:'inventory',label:'Inventory',icon:'ti-package'}]},
+  mari:{name:'Mari',role:'Hub Manager',color:'#B86040',init:'M',id:'mari',
+    tabs:[{id:'overview',label:'Overview',icon:'ti-home'},{id:'calendar',label:'Calendar',icon:'ti-calendar'},{id:'m-invoices',label:'Invoices',icon:'ti-receipt'},{id:'report',label:'Report',icon:'ti-plus'},{id:'issues',label:'Issues',icon:'ti-tool'},{id:'notes',label:'Notes',icon:'ti-message'},{id:'inventory',label:'Inventory',icon:'ti-package'}]},
+  lisa:{name:'Lisa',role:'Field Manager',color:'#6A8A5C',init:'L',id:'lisa',
+    tabs:[{id:'report',label:'Report',icon:'ti-plus'},{id:'l-issues',label:'Issues',icon:'ti-tool'},{id:'l-props',label:'Properties',icon:'ti-home'},{id:'inventory',label:'Inventory',icon:'ti-package'},{id:'notes',label:'Notes',icon:'ti-message'}]},
+  hallye:{name:'Hallye',role:'Decor & Design',color:'#8B6B9E',init:'H',id:'hallye',
+    tabs:[{id:'h-byprop',label:'By Property',icon:'ti-palette'},{id:'h-all',label:'All Items',icon:'ti-list'},{id:'inventory',label:'Inventory',icon:'ti-package'},{id:'notes',label:'Notes',icon:'ti-message'}]},
+  rosa:{name:'Rosa',role:'Cleaning Crew',color:'#C4913A',init:'R',id:'rosa',
+    tabs:[{id:'r-calendar',label:'Calendar',icon:'ti-calendar'},{id:'report',label:'Report',icon:'ti-plus'},{id:'r-invoice',label:'Invoice',icon:'ti-receipt'},{id:'inventory',label:'Inventory',icon:'ti-package'}]},
+};
+const DEFAULT_PROPS=[
+  {id:'cabin1',name:'Cabin 1',rooms:1,status:'active'},
+  {id:'cabin2',name:'Cabin 2',rooms:3,status:'active'},
+  {id:'cabin3',name:'Cabin 3',rooms:4,status:'active'},
+  {id:'ranch',name:'The Ranch',rooms:6,status:'active'},
+  {id:'new1',name:'New House #1',rooms:null,status:'coming_soon'},
+  {id:'new2',name:'New House #2',rooms:null,status:'coming_soon'},
+];
+const CATS=['All','Toiletries','Linens','Kitchen','Cleaning','Maintenance','Other'];
+const CAT_ICONS={Toiletries:'ti-droplet',Linens:'ti-bed',Kitchen:'ti-chef-hat',Cleaning:'ti-spray',Maintenance:'ti-tool',Other:'ti-box'};
+
+let CU=null,CV=null,issues=[],notes=[],decor=[],props=[],inventory=[],bookings=[],offs=[];
+let issF='all',decF='all',selProp='cabin1',invProp='all',invCat='All';
+
+const pname=id=>(props.find(p=>p.id===id)||{name:id}).name;
+const esc=s=>(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+const isRanch=n=>(n||'').toLowerCase().includes('ranch');
+function ago(iso){const d=Date.now()-new Date(iso).getTime(),m=Math.floor(d/60000);if(m<1)return'just now';if(m<60)return m+'m ago';const h=Math.floor(m/60);return h<24?h+'h ago':Math.floor(h/24)+'d ago';}
+const SL={open:'Open',in_progress:'In Progress',done:'Done',needs_upgrade:'Needs Upgrade',approved:'Approved',ordered:'Ordered',installed:'Installed'};
+const PL={high:'Urgent',medium:'Medium',low:'Low'};
+function toast(msg){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2200);}
+function s2a(snap){if(!snap.val())return[];return Object.entries(snap.val()).map(([id,v])=>({...v,id}));}
+
+function setupListeners(){
+  offs.push(iRef.on('value',s=>{issues=s2a(s);if(CV)renderView(CV);autoCleanup();}));
+  offs.push(nRef.on('value',s=>{notes=s2a(s);if(CV)renderView(CV);}));
+  offs.push(dRef.on('value',s=>{decor=s2a(s);if(CV)renderView(CV);}));
+  offs.push(invRef.on('value',s=>{inventory=s2a(s);if(CV)renderView(CV);}));
+  offs.push(calRef.on('value',s=>{bookings=s2a(s);if(CV)renderView(CV);}));
+  offs.push(pRef.on('value',s=>{
+    if(s.val()){props=Object.entries(s.val()).map(([id,v])=>({...v,id}));}
+    else{props=[...DEFAULT_PROPS];DEFAULT_PROPS.forEach(p=>pRef.child(p.id).set(p));}
+    if(CU?.id==='lisa')fillLisaSel();
+    if(CU?.id==='hallye')buildPropSel();
+    if(CU?.id==='rosa')fillRosaInvProps();
+    if(CV)renderView(CV);
+  }));
+}
+function teardown(){offs.forEach(f=>f());offs=[];}
+
+async function doLogin(){
+  const v=document.getElementById('passcode').value.trim().toLowerCase();
+  const u=USERS[v];
+  if(!u){document.getElementById('l-err').textContent='Passcode not recognized. Try again.';return;}
+  document.getElementById('l-err').textContent='';
+  CU=u;
+  document.getElementById('login-screen').style.display='none';
+  document.getElementById('loading-screen').style.display='flex';
+  setupListeners();
+  await new Promise(r=>setTimeout(r,900));
+  document.getElementById('loading-screen').style.display='none';
+  const app=document.getElementById('app');app.style.cssText='display:flex;flex-direction:column;';
+  document.getElementById('hrl').textContent=CU.role;
+  buildNav();
+  if(CU.id==='lisa'||CU.id==='mari'||CU.id==='rosa')fillLisaSel();
+  if(CU.id==='rosa')fillRosaInvProps();
+  if(CU.id==='hallye')buildPropSel();
+  switchView(CU.tabs[0].id);
+}
+function logout(){
+  teardown();CU=null;CV=null;issues=[];notes=[];decor=[];props=[];inventory=[];
+  document.getElementById('passcode').value='';
+  document.getElementById('l-err').textContent='';
+  document.getElementById('app').style.cssText='display:none;';
+  document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
+  document.getElementById('bnav').innerHTML='';
+  document.getElementById('login-screen').style.cssText='display:flex;flex-direction:column;';
+}
+function buildNav(){
+  document.getElementById('bnav').innerHTML=CU.tabs.map(t=>
+    `<button class="ntab" onclick="switchView('${t.id}')" data-tab="${t.id}"><i class="ti ${t.icon}" aria-hidden="true"></i>${t.label}</button>`
+  ).join('');
+}
+function switchView(vid){
+  CV=vid;issF='all';
+  document.querySelectorAll('.ntab').forEach(t=>t.classList.toggle('active',t.dataset.tab===vid));
+  document.querySelectorAll('.view').forEach(v=>v.classList.toggle('active',v.dataset.view===vid&&v.dataset.user===CU.id));
+  renderView(vid);
+}
+function renderView(vid){
+  ({overview:rOverview,issues:rIssues,notes:rNotes,inventory:rInventory,calendar:rAdminCal,'r-invoice':rRosaInvoice,'a-invoices':rAdminInvoices,'m-invoices':rMariInvoices,
+    'l-issues':rLIssues,'l-props':rLProps,'h-byprop':rHByProp,'h-all':rHAll,'r-calendar':rCalendar})[vid]?.();
+}
+
+function rOverview(){
+  const p=CU.id==='admin'?'a':'m';
+  const open=issues.filter(i=>i.status!=='done').length;
+  const active=props.filter(x=>x.status==='active').length;
+  const flags=decor.filter(d=>d.status==='needs_upgrade').length;
+  const restock=inventory.filter(x=>x.needsRestock).length;
+  document.getElementById(p+'-stats').innerHTML=
+    `<div class="stat"><div class="s-num">${active}</div><div class="s-lbl">Properties</div></div>
+     <div class="stat"><div class="s-num">${open}</div><div class="s-lbl">Open Issues</div></div>
+     <div class="stat"><div class="s-num">${restock}</div><div class="s-lbl">Need Restock</div></div>`;
+  document.getElementById(p+'-pgrid').innerHTML=props.map(x=>{
+    const pi=issues.filter(i=>i.propertyId===x.id&&i.status!=='done');
+    const cs=x.status==='coming_soon';
+    return`<div class="pcard${cs?' cs':''}">
+      <div class="p-ico"><i class="ti ${isRanch(x.name)?'ti-building-estate':'ti-home-2'}" aria-hidden="true"></i></div>
+      <div class="p-nm">${esc(x.name)}</div>
+      <div class="p-meta">${x.rooms?x.rooms+' bed'+(x.rooms>1?'s':''):'Details TBD'}</div>
+      ${cs?`<span class="sp s-cs" style="margin-top:.45rem">Coming Soon</span>`
+          :`<span class="ibadge ${pi.length?'has':'ok'}"><i class="ti ${pi.length?'ti-alert-circle':'ti-circle-check'}" aria-hidden="true"></i> ${pi.length?pi.length+' open issue'+(pi.length>1?'s':''):'All clear'}</span>`}
+    </div>`;
+  }).join('');
+  const recent=[...notes].sort((a,b)=>new Date(b.createdAt)-new Date(a.createdAt)).slice(0,3);
+  document.getElementById(p+'-notes-prev').innerHTML=recent.length
+    ?recent.map(n=>`<div class="note"><div class="n-author">${esc(n.author)}</div><div class="n-text">${esc(n.text)}</div><div class="n-time">${ago(n.createdAt)}</div></div>`).join('')
+    :`<div class="empty"><i class="ti ti-message-off" aria-hidden="true"></i><p>No notes yet</p></div>`;
+}
+
+function issueHTML(arr,listId,ctId){
+  if(ctId)document.getElementById(ctId).textContent=arr.length+' issue'+(arr.length!==1?'s':'');
+  document.getElementById(listId).innerHTML=arr.length
+    ?arr.map(i=>`<div class="issue p-${i.priority}" onclick="openIssueMod('${i.id}')">
+        <div class="i-hdr"><span class="i-title">${esc(i.title)}</span><span class="sp s-${i.status}">${SL[i.status]||i.status}</span></div>
+        <div class="i-meta"><span><i class="ti ti-home" aria-hidden="true"></i> ${esc(pname(i.propertyId))}</span><span><i class="ti ti-user" aria-hidden="true"></i> ${esc(i.createdBy)}</span><span>${ago(i.createdAt)}</span></div>
+        ${i.description?`<div class="i-desc">${esc(i.description)}</div>`:''}
+      </div>`).join('')
+    :`<div class="empty"><i class="ti ti-tool-off" aria-hidden="true"></i><p>No issues${issF!=='all'?' with this status':' yet'}</p></div>`;
+}
+function filteredIssues(){
+  let f=[...issues];
+  if(issF!=='all')f=f.filter(i=>i.status===issF);
+  return f.sort((a,b)=>new Date(b.createdAt)-new Date(a.createdAt));
+}
+function issueFbar(elId){
+  const tabs=['all','open','in_progress','done'];
+  const lbl={all:'All',open:'Open',in_progress:'In Progress',done:'Done'};
+  document.getElementById(elId).innerHTML=tabs.map(f=>`<button class="fc${issF===f?' active':''}" onclick="setIssF('${f}')">${lbl[f]}</button>`).join('');
+}
+function rIssues(){
+  const p=CU.id==='admin'?'a':'m';
+  issueFbar(p+'-fbar');issueHTML(filteredIssues(),p+'-iss-list',p+'-iss-ct');
+}
+function rLIssues(){issueFbar('l-fbar');issueHTML(filteredIssues(),'l-iss-list',null);}
+function rNotes(){
+  const pfxMap={admin:'a',mari:'m',lisa:'l',hallye:'h',rosa:'r'};
+  const p=pfxMap[CU.id]||'m';
+  const s=[...notes].sort((a,b)=>new Date(b.createdAt)-new Date(a.createdAt));
+  document.getElementById(p+'-notes-list').innerHTML=s.length
+    ?s.map(n=>`<div class="note"><div class="n-author">${esc(n.author)}</div><div class="n-text">${esc(n.text)}</div><div class="n-time">${ago(n.createdAt)}</div></div>`).join('')
+    :`<div class="empty"><i class="ti ti-message-off" aria-hidden="true"></i><p>No notes yet</p></div>`;
+}
+function rLProps(){
+  document.getElementById('l-props-list').innerHTML=props.map(x=>{
+    const pi=issues.filter(i=>i.propertyId===x.id&&i.status!=='done');
+    const cs=x.status==='coming_soon';
+    return`<div class="prow${cs?' cs':''}">
+      <div class="pr-ico"><i class="ti ${isRanch(x.name)?'ti-building-estate':'ti-home-2'}" aria-hidden="true"></i></div>
+      <div style="flex:1">
+        <div style="font-weight:600;font-size:.9rem;color:var(--brown)">${esc(x.name)}</div>
+        <div style="font-size:.75rem;color:var(--brown-t);margin-top:.1rem">${x.rooms?x.rooms+' bed'+(x.rooms>1?'s':''):'TBD'}
+          ${!cs?` &nbsp;·&nbsp; <span style="color:${pi.length?'var(--terra)':'var(--sage)'}"><i class="ti ${pi.length?'ti-alert-circle':'ti-circle-check'}" aria-hidden="true"></i> ${pi.length?pi.length+' open':'All clear'}</span>`:'&nbsp;·&nbsp; Coming Soon'}
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+/* ── INVENTORY ── */
+function pfxFromUser(){return{admin:'a',mari:'m',lisa:'l',hallye:'h',rosa:'r'}[CU.id];}
+function rInventory(){
+  const p=pfxFromUser();
+  const active=props.filter(x=>x.status==='active');
+  // Property selector
+  const pselEl=document.getElementById(p+'-inv-psel');
+  if(pselEl){
+    pselEl.innerHTML=[{id:'all',name:'All Properties'},...active].map(x=>
+      `<button class="pchip${invProp===x.id?' active':''}" onclick="setInvProp('${x.id}')">${esc(x.name)}</button>`
+    ).join('');
+  }
+  // Category filter
+  const cbarEl=document.getElementById(p+'-inv-cbar');
+  if(cbarEl){
+    cbarEl.innerHTML=CATS.map(c=>
+      `<button class="fc${invCat===c?' active':''}" onclick="setInvCat('${c}')">${c}</button>`
+    ).join('');
+  }
+  // Items
+  let items=[...inventory];
+  if(invProp!=='all')items=items.filter(x=>x.propertyId===invProp);
+  if(invCat!=='All')items=items.filter(x=>x.category===invCat);
+  items.sort((a,b)=>Number(b.needsRestock)-Number(a.needsRestock)||(a.name||'').localeCompare(b.name||''));
+  const listEl=document.getElementById(p+'-inv-list');
+  if(listEl)listEl.innerHTML=items.length
+    ?items.map(x=>`<div class="inv-item">
+        <div class="inv-ico"><i class="ti ${CAT_ICONS[x.category]||'ti-box'}" aria-hidden="true"></i></div>
+        <div class="inv-info">
+          <div class="inv-nm">${esc(x.name)}</div>
+          <div class="inv-prop">${esc(pname(x.propertyId))}</div>
+          <div class="inv-qty">${x.quantity??'—'} ${esc(x.unit||'')}</div>
+          <div class="inv-tags">
+            <span class="cat-tag">${esc(x.category||'Other')}</span>
+            ${x.needsRestock?'<span class="restock-tag"><i class="ti ti-alert-circle" style="font-size:.7rem" aria-hidden="true"></i> Needs Restock</span>':''}
+          </div>
+        </div>
+        <div class="inv-actions">
+          <button class="btn-icon" onclick="openEditInv('${x.id}')"><i class="ti ti-pencil" aria-hidden="true"></i></button>
+          <button class="btn-icon" onclick="toggleRestock('${x.id}',${!x.needsRestock})" title="${x.needsRestock?'Mark restocked':'Flag for restock'}" style="color:${x.needsRestock?'var(--terra)':'var(--brown-t)'}">
+            <i class="ti ${x.needsRestock?'ti-circle-check':'ti-alert-circle'}" aria-hidden="true"></i>
+          </button>
+        </div>
+      </div>`).join('')
+    :`<div class="empty"><i class="ti ti-package-off" aria-hidden="true"></i><p>No inventory items${invProp!=='all'?' for this property':''} yet</p></div>`;
+}
+function setInvProp(id){invProp=id;rInventory();}
+function setInvCat(c){invCat=c;rInventory();}
+
+function openInvModal(editId){
+  const item=editId?inventory.find(x=>x.id===editId):null;
+  const active=props.filter(x=>x.status==='active');
+  const propOpts=active.map(x=>`<option value="${x.id}"${item?.propertyId===x.id?' selected':invProp===x.id&&!item?' selected':''}>${esc(x.name)}</option>`).join('');
+  const catOpts=['Toiletries','Linens','Kitchen','Cleaning','Maintenance','Other'].map(c=>`<option value="${c}"${item?.category===c?' selected':''}>${c}</option>`).join('');
+  document.getElementById('mbox').innerHTML=`
+    <div class="mhdr"><div class="mtitle">${item?'Edit Item':'Add Inventory Item'}</div><button class="mclose" onclick="closeModal()"><i class="ti ti-x" aria-hidden="true"></i></button></div>
+    <div class="fg"><label>Property</label><select id="iv-prop">${propOpts}</select></div>
+    <div class="fg"><label>Item Name</label><input type="text" id="iv-name" value="${esc(item?.name||'')}" placeholder="e.g. Toilet paper rolls"></div>
+    <div class="fg" style="display:grid;grid-template-columns:1fr 1fr;gap:.75rem">
+      <div><label>Quantity</label><input type="number" id="iv-qty" value="${item?.quantity??''}" placeholder="e.g. 24" min="0"></div>
+      <div><label>Unit</label><input type="text" id="iv-unit" value="${esc(item?.unit||'')}" placeholder="rolls, sets..."></div>
+    </div>
+    <div class="fg"><label>Category</label><select id="iv-cat">${catOpts}</select></div>
+    <div class="fg" style="display:flex;align-items:center;gap:.75rem">
+      <input type="checkbox" id="iv-restock" ${item?.needsRestock?'checked':''} style="width:auto;accent-color:var(--terra)">
+      <label for="iv-restock" style="text-transform:none;letter-spacing:0;font-size:.88rem;margin-bottom:0;color:var(--brown)">Needs Restock</label>
+    </div>
+    <button class="btn-p" onclick="${item?`saveEditInv('${editId}')`:'saveNewInv()'}"><i class="ti ti-check" aria-hidden="true"></i> ${item?'Save Changes':'Add Item'}</button>
+    ${item?`<button class="btn-s" style="width:100%;margin-top:.5rem;color:var(--terra-d)" onclick="delInv('${editId}')"><i class="ti ti-trash" aria-hidden="true"></i> Delete Item</button>`:''}`;
+  document.getElementById('mwrap').classList.add('open');
+}
+function openEditInv(id){openInvModal(id);}
+async function saveNewInv(){
+  const name=document.getElementById('iv-name').value.trim();
+  if(!name){toast('Please enter an item name.');return;}
+  await invRef.push({
+    propertyId:document.getElementById('iv-prop').value,
+    name,quantity:parseInt(document.getElementById('iv-qty').value)||0,
+    unit:document.getElementById('iv-unit').value.trim(),
+    category:document.getElementById('iv-cat').value,
+    needsRestock:document.getElementById('iv-restock').checked,
+    addedBy:CU.name,createdAt:new Date().toISOString()
+  });
+  closeModal();toast('Item added!');
+}
+async function saveEditInv(id){
+  const name=document.getElementById('iv-name').value.trim();
+  if(!name){toast('Please enter an item name.');return;}
+  await invRef.child(id).update({
+    propertyId:document.getElementById('iv-prop').value,
+    name,quantity:parseInt(document.getElementById('iv-qty').value)||0,
+    unit:document.getElementById('iv-unit').value.trim(),
+    category:document.getElementById('iv-cat').value,
+    needsRestock:document.getElementById('iv-restock').checked
+  });
+  closeModal();toast('Item updated!');
+}
+async function delInv(id){
+  if(!confirm('Delete this item?'))return;
+  await invRef.child(id).remove();
+  closeModal();toast('Item removed.');
+}
+async function toggleRestock(id,val){
+  await invRef.child(id).update({needsRestock:val});
+  toast(val?'Flagged for restock!':'Marked restocked!');
+}
+
+/* ── DECOR ── */
+function buildPropSel(){
+  const active=props.filter(x=>x.status==='active');
+  if(active.length&&!active.find(x=>x.id===selProp))selProp=active[0].id;
+  document.getElementById('h-psel').innerHTML=active.map(x=>
+    `<button class="pchip${x.id===selProp?' active':''}" onclick="selPr('${x.id}')">${esc(x.name)}</button>`
+  ).join('');
+}
+function selPr(id){selProp=id;buildPropSel();rHByProp();}
+function rHByProp(){
+  const ord={needs_upgrade:0,approved:1,ordered:2,installed:3};
+  const items=[...decor.filter(d=>d.propertyId===selProp)].sort((a,b)=>(ord[a.status]||0)-(ord[b.status]||0));
+  document.getElementById('h-decor-list').innerHTML=items.length
+    ?items.map(d=>`<div class="ditem">
+        <div class="d-ico"><i class="ti ti-armchair" aria-hidden="true"></i></div>
+        <div style="flex:1">
+          <div class="d-nm">${esc(d.item)}</div>
+          ${d.notes?`<div class="d-notes">${esc(d.notes)}</div>`:''}
+          <div style="margin-top:.35rem"><span class="sp s-${d.status}">${SL[d.status]||d.status}</span></div>
+          <select class="d-sel" onchange="updDecor('${d.id}',this.value)">
+            <option value="needs_upgrade"${d.status==='needs_upgrade'?' selected':''}>Needs Upgrade</option>
+            <option value="approved"${d.status==='approved'?' selected':''}>Approved</option>
+            <option value="ordered"${d.status==='ordered'?' selected':''}>Ordered</option>
+            <option value="installed"${d.status==='installed'?' selected':''}>Installed</option>
+          </select>
+        </div>
+      </div>`).join('')
+    :`<div class="empty"><i class="ti ti-palette-off" aria-hidden="true"></i><p>No decor items for this property yet</p></div>`;
+}
+function rHAll(){
+  const fids=['all','needs_upgrade','approved','ordered','installed'];
+  const flbls={all:'All',needs_upgrade:'Needs Upgrade',approved:'Approved',ordered:'Ordered',installed:'Installed'};
+  document.getElementById('h-fbar').innerHTML=fids.map(f=>`<button class="fc${decF===f?' active':''}" onclick="setDecF('${f}')">${flbls[f]}</button>`).join('');
+  const ord={needs_upgrade:0,approved:1,ordered:2,installed:3};
+  let f=decF==='all'?[...decor]:decor.filter(d=>d.status===decF);
+  f.sort((a,b)=>(ord[a.status]||0)-(ord[b.status]||0));
+  document.getElementById('h-all-list').innerHTML=f.length
+    ?f.map(d=>`<div class="ditem">
+        <div class="d-ico"><i class="ti ti-armchair" aria-hidden="true"></i></div>
+        <div style="flex:1">
+          <div class="d-nm">${esc(d.item)}</div>
+          <div class="d-sub">${esc(pname(d.propertyId))}</div>
+          ${d.notes?`<div class="d-notes">${esc(d.notes)}</div>`:''}
+          <div style="margin-top:.35rem"><span class="sp s-${d.status}">${SL[d.status]||d.status}</span></div>
+        </div>
+      </div>`).join('')
+    :`<div class="empty"><i class="ti ti-palette-off" aria-hidden="true"></i><p>No items${decF!=='all'?' with this status':' yet'}</p></div>`;
+}
+
+/* ── MANAGE PROPS ── */
+function openManageProps(){
+  document.getElementById('mbox').innerHTML=`
+    <div class="mhdr"><div class="mtitle">Manage Properties</div><button class="mclose" onclick="closeModal()"><i class="ti ti-x" aria-hidden="true"></i></button></div>
+    ${props.map(x=>`
+      <div class="pmrow${x.status==='coming_soon'?' cs':''}">
+        <div class="pm-ico"><i class="ti ${isRanch(x.name)?'ti-building-estate':'ti-home-2'}" aria-hidden="true"></i></div>
+        <div style="flex:1"><div class="pm-nm">${esc(x.name)}</div>
+          <div class="pm-meta">${x.rooms?x.rooms+' bed'+(x.rooms>1?'s':''):'TBD'} · ${x.status==='active'?'Active':'Coming Soon'}</div>
+        </div>
+        <div style="display:flex;gap:.35rem">
+          <button class="btn-icon" onclick="openEditProp('${x.id}')"><i class="ti ti-pencil" aria-hidden="true"></i></button>
+          <button class="btn-icon" style="color:var(--terra-d)" onclick="delProp('${x.id}')"><i class="ti ti-trash" aria-hidden="true"></i></button>
+        </div>
+      </div>`).join('')}
+    <hr class="divhr">
+    <button class="btn-p" onclick="openAddProp()"><i class="ti ti-plus" aria-hidden="true"></i> Add Property</button>`;
+  document.getElementById('mwrap').classList.add('open');
+}
+function openAddProp(){
+  document.getElementById('mbox').innerHTML=`
+    <div class="mhdr"><div class="mtitle">Add Property</div><button class="mclose" onclick="openManageProps()"><i class="ti ti-arrow-left" aria-hidden="true"></i></button></div>
+    <div class="fg"><label>Property Name</label><input type="text" id="ep-name" placeholder="e.g. Lake House"></div>
+    <div class="fg"><label>Bedrooms</label><input type="number" id="ep-rooms" placeholder="e.g. 3" min="0"></div>
+    <div class="fg"><label>Status</label><select id="ep-status"><option value="active">Active</option><option value="coming_soon">Coming Soon</option></select></div>
+    <button class="btn-p" onclick="saveNew()"><i class="ti ti-check" aria-hidden="true"></i> Add Property</button>`;
+}
+function openEditProp(id){
+  const x=props.find(p=>p.id===id);if(!x)return;
+  document.getElementById('mbox').innerHTML=`
+    <div class="mhdr"><div class="mtitle">Edit Property</div><button class="mclose" onclick="openManageProps()"><i class="ti ti-arrow-left" aria-hidden="true"></i></button></div>
+    <div class="fg"><label>Property Name</label><input type="text" id="ep-name" value="${esc(x.name)}"></div>
+    <div class="fg"><label>Bedrooms</label><input type="number" id="ep-rooms" value="${x.rooms||''}" min="0"></div>
+    <div class="fg"><label>Status</label><select id="ep-status"><option value="active"${x.status==='active'?' selected':''}>Active</option><option value="coming_soon"${x.status==='coming_soon'?' selected':''}>Coming Soon</option></select></div>
+    <button class="btn-p" onclick="saveEdit('${id}')"><i class="ti ti-check" aria-hidden="true"></i> Save Changes</button>`;
+}
+async function saveNew(){
+  const name=document.getElementById('ep-name').value.trim();
+  const rooms=parseInt(document.getElementById('ep-rooms').value)||null;
+  const status=document.getElementById('ep-status').value;
+  if(!name){toast('Please enter a property name.');return;}
+  const id='prop_'+Date.now().toString(36);
+  await pRef.child(id).set({id,name,rooms,status});
+  toast('Property added!');closeModal();
+}
+async function saveEdit(id){
+  const name=document.getElementById('ep-name').value.trim();
+  const rooms=parseInt(document.getElementById('ep-rooms').value)||null;
+  const status=document.getElementById('ep-status').value;
+  if(!name){toast('Please enter a property name.');return;}
+  await pRef.child(id).update({name,rooms,status});
+  toast('Updated!');closeModal();
+}
+async function delProp(id){
+  if(!confirm('Delete this property? Cannot be undone.'))return;
+  await pRef.child(id).remove();toast('Property removed.');
+}
+
+/* ── ISSUES / NOTES ── */
+function setIssF(f){issF=f;renderView(CV);}
+function setDecF(f){decF=f;rHAll();}
+function fillLisaSel(){
+  const opts='<option value="">Select property...</option>'+props.filter(x=>x.status==='active').map(x=>`<option value="${x.id}">${esc(x.name)}</option>`).join('');
+  ['l-prop','r-prop','m-rp-prop'].forEach(id=>{const el=document.getElementById(id);if(el)el.innerHTML=opts;});
+}
+async function submitIssue(){submitIssueFor('l');}
+async function submitIssueFor(pfx){
+  const prop=document.getElementById(pfx+'-prop').value;
+  const title=document.getElementById(pfx+'-title').value.trim();
+  const desc=document.getElementById(pfx+'-desc').value.trim();
+  const pri=document.getElementById(pfx+'-pri').value;
+  if(!prop||!title){toast('Please select a property and add a title.');return;}
+  await iRef.push({propertyId:prop,title,description:desc,priority:pri,status:'open',createdBy:CU.role,createdAt:new Date().toISOString(),updatedAt:new Date().toISOString()});
+  document.getElementById(pfx+'-prop').value='';
+  document.getElementById(pfx+'-title').value='';
+  document.getElementById(pfx+'-desc').value='';
+  document.getElementById(pfx+'-pri').value='medium';
+  toast('Issue reported!');issF='all';
+  if(CU.id==='lisa')switchView('l-issues');
+  else if(CU.id==='rosa')switchView('report');
+  else switchView('issues');
+}
+async function addNote(pfx){
+  const el=document.getElementById(pfx+'-note-txt');
+  const text=el.value.trim();if(!text)return;
+  await nRef.push({author:CU.role,text,createdAt:new Date().toISOString()});
+  el.value='';toast('Note posted!');
+}
+function openIssueMod(id){
+  const iss=issues.find(i=>i.id===id);if(!iss)return;
+  const canEdit=CU.id==='admin'||CU.id==='mari'||CU.id==='lisa';
+  document.getElementById('mbox').innerHTML=`
+    <div class="mhdr"><div class="mtitle">${esc(iss.title)}</div><button class="mclose" onclick="closeModal()"><i class="ti ti-x" aria-hidden="true"></i></button></div>
+    <div style="display:flex;gap:.45rem;flex-wrap:wrap;margin-bottom:.7rem">
+      <span class="sp s-${iss.status}">${SL[iss.status]||iss.status}</span>
+      <span class="sp" style="background:var(--cream);color:var(--brown-t)">${PL[iss.priority]||iss.priority} Priority</span>
+    </div>
+    <div style="font-size:.76rem;color:var(--brown-t);margin-bottom:.75rem">
+      <i class="ti ti-home" aria-hidden="true"></i> ${esc(pname(iss.propertyId))}
+      &nbsp;·&nbsp;<i class="ti ti-user" aria-hidden="true"></i> ${esc(iss.createdBy)}
+      &nbsp;·&nbsp;${ago(iss.createdAt)}
+    </div>
+    ${iss.description?`<p style="font-size:.88rem;color:var(--brown-m);line-height:1.5;margin-bottom:.85rem">${esc(iss.description)}</p>`:''}
+    ${canEdit?`<hr class="divhr"><label>Update Status</label>
+      <div class="m-acts">
+        <button class="btn-s" onclick="updIssue('${iss.id}','open')">Open</button>
+        <button class="btn-s" onclick="updIssue('${iss.id}','in_progress')">In Progress</button>
+        <button class="btn-done" onclick="updIssue('${iss.id}','done')"><i class="ti ti-check" aria-hidden="true"></i> Mark Done</button>
+      </div>`:''}`;
+  document.getElementById('mwrap').classList.add('open');
+}
+async function updIssue(id,status){
+  await iRef.child(id).update({status,updatedAt:new Date().toISOString()});
+  closeModal();toast('Status updated!');
+}
+function openDecorModal(){
+  const active=props.filter(x=>x.status==='active');
+  const opts=active.map(x=>`<option value="${x.id}"${x.id===selProp?' selected':''}>${esc(x.name)}</option>`).join('');
+  document.getElementById('mbox').innerHTML=`
+    <div class="mhdr"><div class="mtitle">Add Decor Item</div><button class="mclose" onclick="closeModal()"><i class="ti ti-x" aria-hidden="true"></i></button></div>
+    <div class="fg"><label>Property</label><select id="d-prop">${opts}</select></div>
+    <div class="fg"><label>Item</label><input type="text" id="d-item" placeholder="e.g. Living room lamp"></div>
+    <div class="fg"><label>Status</label>
+      <select id="d-status">
+        <option value="needs_upgrade">Needs Upgrade</option>
+        <option value="approved">Approved</option>
+        <option value="ordered">Ordered</option>
+        <option value="installed">Installed</option>
+      </select>
+    </div>
+    <div class="fg"><label>Notes</label><textarea id="d-notes" placeholder="Details, inspiration, budget..."></textarea></div>
+    <button class="btn-p" onclick="submitDecor()"><i class="ti ti-plus" aria-hidden="true"></i> Add Item</button>`;
+  document.getElementById('mwrap').classList.add('open');
+}
+async function submitDecor(){
+  const prop=document.getElementById('d-prop').value;
+  const item=document.getElementById('d-item').value.trim();
+  const status=document.getElementById('d-status').value;
+  const notes=document.getElementById('d-notes').value.trim();
+  if(!item){toast('Please enter an item name.');return;}
+  await dRef.push({propertyId:prop,item,status,notes,addedBy:CU.name,createdAt:new Date().toISOString()});
+  selProp=prop;closeModal();buildPropSel();toast('Item added!');
+}
+async function updDecor(id,status){await dRef.child(id).update({status});toast('Updated!');}
+
+
+/* ── CALENDAR ── */
+/* ── UNIFIED CALENDAR ── */
+let calViewMode={a:'grid',m:'grid',r:'grid'};
+let calCurrentMonth={a:new Date(),m:new Date(),r:new Date()};
+
+function pfxForCal(){return{admin:'a',mari:'m',rosa:'r'}[CU.id]||'a';}
+
+function setCalView(pfx,mode){
+  calViewMode[pfx]=mode;
+  const togCal=document.getElementById(pfx+'-tog-cal');
+  const togList=document.getElementById(pfx+'-tog-list');
+  if(togCal)togCal.classList.toggle('active',mode==='grid');
+  if(togList)togList.classList.toggle('active',mode==='list');
+  renderCalWrap(pfx);
+}
+
+function rCalendar(){renderCalWrap('r');}
+function rAdminCal(){renderCalWrap(pfxForCal());}
+
+function renderCalWrap(pfx){
+  const wrapId=pfx+'-cal-wrap';
+  const el=document.getElementById(wrapId);
+  if(!el)return;
+  if(calViewMode[pfx]==='grid') el.innerHTML=buildCalGrid(pfx);
+  else el.innerHTML=buildCalList(pfx);
+}
+
+function propColorIdx(propId){
+  const activeIds=props.filter(x=>x.status==='active').map(x=>x.id);
+  const idx=activeIds.indexOf(propId);
+  return idx>=0?idx:0;
+}
+
+function buildCalGrid(pfx){
+  const canEdit=pfx==='a'||pfx==='m';
+  const d=calCurrentMonth[pfx];
+  const year=d.getFullYear();
+  const month=d.getMonth();
+  const today=new Date();today.setHours(0,0,0,0);
+  const monthName=d.toLocaleDateString('en-US',{month:'long',year:'numeric'});
+  const firstDay=new Date(year,month,1).getDay();
+  const daysInMonth=new Date(year,month+1,0).getDate();
+  const daysInPrev=new Date(year,month,0).getDate();
+  const cells=[];
+  for(let i=firstDay-1;i>=0;i--) cells.push({day:daysInPrev-i,otherMonth:true,date:new Date(year,month-1,daysInPrev-i)});
+  for(let i=1;i<=daysInMonth;i++) cells.push({day:i,otherMonth:false,date:new Date(year,month,i)});
+  const remaining=42-cells.length;
+  for(let i=1;i<=remaining;i++) cells.push({day:i,otherMonth:true,date:new Date(year,month+1,i)});
+
+  let html=`<div class="cal-nav">
+    <button class="cal-nav-btn" onclick="calNav('${pfx}',-1)"><i class="ti ti-chevron-left" aria-hidden="true"></i></button>
+    <span class="cal-month">${monthName}</span>
+    <button class="cal-nav-btn" onclick="calNav('${pfx}',1)"><i class="ti ti-chevron-right" aria-hidden="true"></i></button>
+  </div>
+  <div class="cal-grid">
+    <div class="cal-dow">Su</div><div class="cal-dow">Mo</div><div class="cal-dow">Tu</div>
+    <div class="cal-dow">We</div><div class="cal-dow">Th</div><div class="cal-dow">Fr</div><div class="cal-dow">Sa</div>`;
+
+  cells.forEach(cell=>{
+    const isToday=!cell.otherMonth&&cell.date.getTime()===today.getTime();
+    const cellDate=new Date(cell.date);cellDate.setHours(0,0,0,0);
+    const dateKey=cellDate.toISOString().slice(0,10);
+    const dayBookings=bookings.filter(b=>{
+      const cin=new Date(b.checkIn);cin.setHours(0,0,0,0);
+      const cout=new Date(b.checkOut);cout.setHours(0,0,0,0);
+      return cellDate>=cin&&cellDate<cout;
+    });
+    const checkoutBookings=bookings.filter(b=>{
+      const cout=new Date(b.checkOut);cout.setHours(0,0,0,0);
+      return cellDate.getTime()===cout.getTime();
+    });
+    // Show only dots — no text in grid, clean like Apple Calendar
+    const fullDots=dayBookings.slice(0,4).map(b=>`<span class="cal-dot prop-color-${propColorIdx(b.propertyId)}"></span>`).join('');
+    const halfDots=checkoutBookings.slice(0,4-dayBookings.length).map(b=>`<span class="cal-dot-half prop-color-${propColorIdx(b.propertyId)}"></span>`).join('');
+    const dotsWrap=(fullDots||halfDots)?`<div class="cal-dots">${fullDots}${halfDots}</div>`:'';
+    html+=`<div class="cal-cell${cell.otherMonth?' other-month':''}${isToday?' today':''}" onclick="selectCalDay('${pfx}','${dateKey}')">
+      <div class="cal-day-num">${cell.day}</div>
+      ${dotsWrap}
+    </div>`;
+  });
+  html+=`</div><div id="${pfx}-day-detail" class="day-detail"></div>`;
+  return html;
+}
+
+function buildCalList(pfx){
+  const canEdit=pfx==='a'||pfx==='m';
+  const now=new Date();now.setHours(0,0,0,0);
+  const sorted=[...bookings].sort((a,b)=>new Date(a.checkIn)-new Date(b.checkIn));
+  const upcoming=sorted.filter(b=>new Date(b.checkOut)>=now);
+  const past=sorted.filter(b=>new Date(b.checkOut)<now);
+  const all=[...upcoming,...past];
+  if(!all.length) return`<div class="cal-empty"><i class="ti ti-calendar-off" style="font-size:2rem;display:block;margin-bottom:.5rem;color:var(--terra-l)" aria-hidden="true"></i>${canEdit?'No bookings yet — click Add Booking to get started!':'No upcoming bookings'}</div>`;
+  return all.map(b=>{
+    const cin=new Date(b.checkIn);const cout=new Date(b.checkOut);
+    const isActive=cin<=now&&cout>now;
+    const isPast=cout<=now;
+    const fmt=d=>d.toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'});
+    const colorClass='prop-color-'+propColorIdx(b.propertyId);
+    return`<div class="booking-card${isActive?' today':isPast?' past':''}" style="border-left-color:var(--terra)">
+      ${isActive?'<span class="bk-badge"><i class="ti ti-home" aria-hidden="true"></i>&nbsp;Guests in house</span>':''}
+      <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:.5rem">
+        <div class="bk-prop"><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:var(--${colorClass});margin-right:4px"></span>${esc(pname(b.propertyId))}</div>
+        ${canEdit?`<div style="display:flex;gap:.3rem;flex-shrink:0">
+          <button class="btn-icon" onclick="openCalModal('${b.id}')"><i class="ti ti-pencil" aria-hidden="true"></i></button>
+          <button class="btn-icon" style="color:var(--terra-d)" onclick="delBk('${b.id}')"><i class="ti ti-trash" aria-hidden="true"></i></button>
+        </div>`:''}
+      </div>
+      <div class="bk-dates">
+        <span class="bk-date"><i class="ti ti-login" aria-hidden="true"></i> Check-in: <strong>${fmt(cin)}</strong></span>
+        <span class="bk-date"><i class="ti ti-logout" aria-hidden="true"></i> Check-out: <strong>${fmt(cout)}</strong></span>
+      </div>
+      ${b.notes?`<div class="bk-notes"><i class="ti ti-notes" style="font-size:.8rem" aria-hidden="true"></i> ${esc(b.notes)}</div>`:''}
+    </div>`;
+  }).join('');
+}
+
+function calNav(pfx,dir){
+  const d=calCurrentMonth[pfx];
+  calCurrentMonth[pfx]=new Date(d.getFullYear(),d.getMonth()+dir,1);
+  renderCalWrap(pfx);
+}
+
+function showBkDetail(id){
+  const b=bookings.find(x=>x.id===id);if(!b)return;
+  const cin=new Date(b.checkIn);const cout=new Date(b.checkOut);
+  const fmt=d=>d.toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'});
+  document.getElementById('mbox').innerHTML=`
+    <div class="mhdr"><div class="mtitle">${esc(pname(b.propertyId))}</div><button class="mclose" onclick="closeModal()"><i class="ti ti-x" aria-hidden="true"></i></button></div>
+    <div class="bk-dates" style="margin-bottom:.5rem">
+      <span class="bk-date"><i class="ti ti-login" aria-hidden="true"></i> Check-in: <strong>${fmt(cin)}</strong></span>
+      <span class="bk-date"><i class="ti ti-logout" aria-hidden="true"></i> Check-out: <strong>${fmt(cout)}</strong></span>
+    </div>
+    ${b.notes?`<div class="bk-notes"><i class="ti ti-notes" style="font-size:.8rem" aria-hidden="true"></i> ${esc(b.notes)}</div>`:''}`;
+  document.getElementById('mwrap').classList.add('open');
+}
+
+/* ── AUTO CLEANUP/* ── AUTO CLEANUP: delete completed issues older than 30 days ── */
+
+/* ── INVOICES ── */
+let invoices=[];
+invRef2.on('value',s=>{
+  invoices=s.exists()?Object.entries(s.val()).map(([id,v])=>({id,...v})):[];
+  if(CV==='r-invoice')rRosaInvoice();
+  if(CV==='a-invoices')rAdminInvoices();
+  if(CV==='m-invoices')rMariInvoices();
+});
+
+function fillRosaInvProps(){
+  const sel=document.getElementById('ri-prop');
+  if(!sel)return;
+  sel.innerHTML='<option value="">Select property...</option>';
+  props.forEach(p=>{sel.innerHTML+=`<option value="${p.id}">${p.name}</option>`;});
+}
+
+function rRosaInvoice(){
+  // Refill dropdown every render so properties are always loaded
+  const sel=document.getElementById('ri-prop');
+  if(sel){
+    sel.innerHTML='<option value="">Select property...</option>';
+    props.forEach(p=>{sel.innerHTML+=`<option value="${p.id}">${p.name}</option>`;});
+  }
+  const myInvoices=invoices.filter(i=>i.submittedBy==='rosa').sort((a,b)=>new Date(b.submittedAt)-new Date(a.submittedAt));
+  const el=document.getElementById('ri-history');
+  if(!el)return;
+  if(!myInvoices.length){el.innerHTML='';return;}
+  el.innerHTML=`<h3 style="margin:1.2rem 0 .5rem;font-size:.9rem;color:var(--brown-m)">Your Submitted Invoices</h3>`+
+    myInvoices.map(inv=>{
+      const prop=props.find(p=>p.id===inv.propertyId);
+      const status=inv.status||'pending';
+      const statusColor=status==='approved'?'#4a7c59':status==='paid'?'#3a6ea8':'#b86040';
+      const dateLabel=inv.dateCleaned?new Date(inv.dateCleaned).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}):'—';
+      return `<div class="card" style="margin-bottom:.6rem">
+        <div style="display:flex;justify-content:space-between;align-items:center">
+          <strong>${prop?.name||'Unknown'}</strong>
+          <span style="font-size:.72rem;padding:.15rem .5rem;border-radius:99px;background:${statusColor}20;color:${statusColor};text-transform:capitalize">${status}</span>
+        </div>
+        <div style="font-size:.8rem;color:var(--brown-m);margin:.3rem 0">📅 ${dateLabel}</div>
+        <div style="font-weight:600;color:var(--terra)">$${parseFloat(inv.fee).toFixed(2)}</div>
+        ${inv.notes?`<div style="font-size:.78rem;color:var(--brown-m);margin-top:.3rem">${inv.notes}</div>`:''}
+      </div>`;
+    }).join('');
+}
+
+function rAdminInvoices(){rInvoiceList('a-invoice-list');}
+function rMariInvoices(){rInvoiceList('m-invoice-list');}
+
+function rInvoiceList(elId){
+  const el=document.getElementById(elId);
+  if(!el)return;
+  if(!invoices.length){el.innerHTML='<p style="color:var(--brown-m);text-align:center;padding:2rem">No invoices yet</p>';return;}
+  const sorted=[...invoices].sort((a,b)=>new Date(b.submittedAt)-new Date(a.submittedAt));
+  // Group by month
+  const groups={};
+  sorted.forEach(inv=>{
+    const d=new Date(inv.submittedAt);
+    const key=d.toLocaleString('default',{month:'long',year:'numeric'});
+    if(!groups[key])groups[key]=[];
+    groups[key].push(inv);
+  });
+  let html='';
+  Object.entries(groups).forEach(([month,invs])=>{
+    const total=invs.reduce((s,i)=>s+parseFloat(i.fee||0),0);
+    html+=`<div style="margin-bottom:1.2rem">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.5rem">
+        <h3 style="font-size:.85rem;color:var(--brown-m);font-weight:600">${month}</h3>
+        <span style="font-size:.82rem;font-weight:700;color:var(--terra)">Total: $${total.toFixed(2)}</span>
+      </div>`;
+    invs.forEach(inv=>{
+      const prop=props.find(p=>p.id===inv.propertyId);
+      const status=inv.status||'pending';
+      const statusColor=status==='approved'?'#4a7c59':status==='paid'?'#3a6ea8':'#b86040';
+      html+=`<div class="card" style="margin-bottom:.5rem">
+        <div style="display:flex;justify-content:space-between;align-items:center">
+          <strong>${prop?.name||'Unknown'}</strong>
+          <div style="display:flex;gap:.5rem;align-items:center">
+            <span style="font-size:.72rem;padding:.15rem .5rem;border-radius:99px;background:${statusColor}20;color:${statusColor};text-transform:capitalize;cursor:pointer" onclick="cycleInvStatus('${inv.id}','${status}')">${status}</span>
+            <button onclick="deleteInvoice('${inv.id}')" style="background:none;border:none;cursor:pointer;color:#c0392b;font-size:.85rem"><i class="ti ti-trash"></i></button>
+          </div>
+        </div>
+        <div style="font-size:.8rem;color:var(--brown-m);margin:.3rem 0">📅 ${inv.dateCleaned?new Date(inv.dateCleaned).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}):'—'}</div>
+        <div style="font-weight:700;color:var(--terra);font-size:1rem">$${parseFloat(inv.fee).toFixed(2)}</div>
+        ${inv.notes?`<div style="font-size:.78rem;color:var(--brown-m);margin-top:.3rem">${inv.notes}</div>`:''}
+        <div style="font-size:.7rem;color:#aaa;margin-top:.3rem">Submitted ${new Date(inv.submittedAt).toLocaleDateString()}</div>
+      </div>`;
+    });
+    html+=`</div>`;
+  });
+  el.innerHTML=html;
+}
+
+async function submitInvoice(){
+  const prop=document.getElementById('ri-prop').value;
+  const date=document.getElementById('ri-date').value.trim();
+  const fee=document.getElementById('ri-fee').value.trim();
+  const notes=document.getElementById('ri-notes').value.trim();
+  if(!prop||!date||!fee){toast('Please fill in all required fields.');return;}
+  const cleanDate=new Date(date);
+  if(isNaN(cleanDate)){toast('Please enter a valid date.');return;}
+  await invRef2.push({propertyId:prop,dateCleaned:cleanDate.toISOString(),fee:parseFloat(fee),notes,submittedBy:'rosa',submittedAt:new Date().toISOString(),status:'pending'});
+  document.getElementById('ri-prop').value='';
+  document.getElementById('ri-date').value='';
+  document.getElementById('ri-fee').value='';
+  document.getElementById('ri-notes').value='';
+  toast('Invoice submitted! ✅');
+}
+
+async function cycleInvStatus(id,current){
+  const next={pending:'approved',approved:'paid',paid:'pending'};
+  await invRef2.child(id).update({status:next[current]||'pending'});
+}
+
+async function deleteInvoice(id){
+  if(!confirm('Delete this invoice?'))return;
+  await invRef2.child(id).remove();
+  toast('Invoice deleted.');
+}
+
+function printInvoices(user){
+  const sorted=[...invoices].sort((a,b)=>new Date(b.submittedAt)-new Date(a.submittedAt));
+  let rows=sorted.map(inv=>{
+    const prop=props.find(p=>p.id===inv.propertyId);
+    const dl=inv.dateCleaned?new Date(inv.dateCleaned).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}):'—';
+    return `<tr>
+      <td>${prop?.name||'Unknown'}</td>
+      <td>${dl}</td>
+      <td>$${parseFloat(inv.fee).toFixed(2)}</td>
+      <td>${inv.notes||'—'}</td>
+      <td style="text-transform:capitalize">${inv.status||'pending'}</td>
+    </tr>`;
+  }).join('');
+  const total=sorted.reduce((s,i)=>s+parseFloat(i.fee||0),0);
+  const win=window.open('','_blank');
+  win.document.write(`<!DOCTYPE html><html><head><title>Rosa's Invoices</title>
+  <style>
+    body{font-family:Georgia,serif;padding:2rem;color:#3D2B1F;}
+    h1{color:#B86040;margin-bottom:.3rem;}
+    p{color:#888;margin-bottom:1.5rem;font-size:.9rem;}
+    table{width:100%;border-collapse:collapse;}
+    th{background:#B86040;color:#fff;padding:.6rem .8rem;text-align:left;font-size:.85rem;}
+    td{padding:.55rem .8rem;border-bottom:1px solid #eee;font-size:.85rem;}
+    tr:nth-child(even){background:#faf8f5;}
+    .total{text-align:right;margin-top:1rem;font-weight:bold;font-size:1rem;color:#B86040;}
+    @media print{button{display:none}}
+  </style></head><body>
+  <h1>Rosa's Cleaning Invoices</h1>
+  <p>Generated ${new Date().toLocaleDateString('en-US',{month:'long',day:'numeric',year:'numeric'})}</p>
+  <button onclick="window.print()" style="margin-bottom:1rem;padding:.4rem 1rem;background:#B86040;color:#fff;border:none;border-radius:6px;cursor:pointer;font-size:.85rem">🖨 Print / Save as PDF</button>
+  <table>
+    <thead><tr><th>Property</th><th>Date Cleaned</th><th>Fee</th><th>Notes</th><th>Status</th></tr></thead>
+    <tbody>${rows}</tbody>
+  </table>
+  <p class="total">Total: $${total.toFixed(2)}</p>
+  </body></html>`);
+  win.document.close();
+}
+
+async function autoCleanup(){
+  // Clean completed issues older than 90 days
+  const cutoff=Date.now()-(90*24*60*60*1000);
+  const toDelete=issues.filter(i=>i.status==='done'&&new Date(i.updatedAt||i.createdAt).getTime()<cutoff);
+  if(toDelete.length>0){
+    const updates={};
+    toDelete.forEach(i=>{updates[i.id]=null;});
+    await iRef.update(updates);
+    console.log(`Auto-cleaned ${toDelete.length} completed issue(s) older than 90 days`);
+  }
+  // Clean past bookings older than 90 days
+  const bCutoff=Date.now()-(90*24*60*60*1000);
+  const snap=await calRef.once('value');
+  if(snap.exists()){
+    const bUpdates={};
+    snap.forEach(c=>{
+      const b=c.val();
+      if(b.checkOut&&new Date(b.checkOut).getTime()<bCutoff){bUpdates[c.key]=null;}
+    });
+    if(Object.keys(bUpdates).length>0){
+      await calRef.update(bUpdates);
+      console.log(`Auto-cleaned ${Object.keys(bUpdates).length} past booking(s) older than 90 days`);
+    }
+  }
+}
+
+
+let selectedCalDay={a:null,m:null,r:null};
+
+function selectCalDay(pfx,dateKey){
+  selectedCalDay[pfx]=dateKey;
+  // Update selected cell highlight
+  document.querySelectorAll('.cal-cell').forEach(c=>c.classList.remove('selected'));
+  event.currentTarget?.classList?.add('selected');
+  const detailEl=document.getElementById(pfx+'-day-detail');
+  if(!detailEl)return;
+  const canEdit=pfx==='a'||pfx==='m';
+  const date=new Date(dateKey+'T00:00:00');
+  const dayBookings=bookings.filter(b=>{
+    const cin=new Date(b.checkIn);cin.setHours(0,0,0,0);
+    const cout=new Date(b.checkOut);cout.setHours(0,0,0,0);
+    const d=new Date(dateKey+'T00:00:00');
+    return d>=cin&&d<cout;
+  });
+  const fmt=d=>d.toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'});
+  const hdrDate=date.toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric'});
+  if(!dayBookings.length){
+    detailEl.innerHTML=`<div class="day-detail-hdr">${hdrDate}</div><div class="day-detail-item"><div class="ddi-info" style="color:var(--brown-t);font-size:.85rem">No bookings this day</div></div>`;
+    return;
+  }
+  detailEl.innerHTML=`<div class="day-detail-hdr">${hdrDate} <span style="font-size:.75rem;opacity:.85">${dayBookings.length} booking${dayBookings.length>1?'s':''}</span></div>`
+    +dayBookings.map(b=>{
+      const cin=new Date(b.checkIn);const cout=new Date(b.checkOut);
+      const colorClass='prop-color-'+propColorIdx(b.propertyId);
+      return`<div class="day-detail-item">
+        <div class="ddi-color ${colorClass}"></div>
+        <div class="ddi-info">
+          <div class="ddi-prop">${esc(pname(b.propertyId))}</div>
+          <div class="ddi-dates"><i class="ti ti-login" style="font-size:.75rem" aria-hidden="true"></i> ${fmt(cin)} &nbsp;→&nbsp; <i class="ti ti-logout" style="font-size:.75rem" aria-hidden="true"></i> ${fmt(cout)}</div>
+          ${b.notes?`<div class="ddi-notes">${esc(b.notes)}</div>`:''}
+        </div>
+        ${canEdit?`<div class="ddi-acts">
+          <button class="btn-icon" onclick="openCalModal('${b.id}')"><i class="ti ti-pencil" aria-hidden="true"></i></button>
+          <button class="btn-icon" style="color:var(--terra-d)" onclick="delBk('${b.id}')"><i class="ti ti-trash" aria-hidden="true"></i></button>
+        </div>`:''}
+      </div>`;
+    }).join('');
+  detailEl.scrollIntoView({behavior:'smooth',block:'nearest'});
+}
+
+
+function openCalModal(editId){
+  const bk=editId?bookings.find(x=>x.id===editId):null;
+  const propOpts=props.filter(x=>x.status==='active').map(x=>`<option value="${x.id}"${bk?.propertyId===x.id?' selected':''}>${esc(x.name)}</option>`).join('');
+  const fmtDate=iso=>iso?new Date(iso).toLocaleDateString('en-US'):'';
+  document.getElementById('mbox').innerHTML=`
+    <div class="mhdr"><div class="mtitle">${bk?'Edit Booking':'Add Booking'}</div><button class="mclose" onclick="closeModal()"><i class="ti ti-x" aria-hidden="true"></i></button></div>
+    <div class="fg"><label>Property</label><select id="bk-prop">${propOpts}</select></div>
+    <div class="fg" style="display:grid;grid-template-columns:1fr 1fr;gap:.75rem">
+      <div><label>Check-In</label><input type="text" id="bk-in" value="${fmtDate(bk?.checkIn)}" placeholder="MM/DD/YYYY"></div>
+      <div><label>Check-Out</label><input type="text" id="bk-out" value="${fmtDate(bk?.checkOut)}" placeholder="MM/DD/YYYY"></div>
+    </div>
+    <div class="fg"><label>Notes / Instructions</label><textarea id="bk-notes" placeholder="e.g. Deep clean needed, extra towels...">${bk?.notes||''}</textarea></div>
+    <button class="btn-p" onclick="${bk?`saveEditBk('${editId}')`:'saveNewBk()'}"><i class="ti ti-check" aria-hidden="true"></i> ${bk?'Save Changes':'Add Booking'}</button>
+    ${bk?`<button class="btn-s" style="width:100%;margin-top:.5rem;color:var(--terra-d)" onclick="delBk('${bk.id}')"><i class="ti ti-trash" aria-hidden="true"></i> Delete</button>`:''}`;
+  document.getElementById('mwrap').classList.add('open');
+}
+async function saveNewBk(){
+  const prop=document.getElementById('bk-prop').value;
+  const cin=document.getElementById('bk-in').value.trim();
+  const cout=document.getElementById('bk-out').value.trim();
+  const notes=document.getElementById('bk-notes').value.trim();
+  if(!prop||!cin||!cout){toast('Please fill in property and dates.');return;}
+  const inDate=new Date(cin);const outDate=new Date(cout);
+  if(isNaN(inDate)||isNaN(outDate)){toast('Please enter valid dates (MM/DD/YYYY).');return;}
+  await calRef.push({propertyId:prop,checkIn:inDate.toISOString(),checkOut:outDate.toISOString(),notes,createdBy:CU.role,createdAt:new Date().toISOString()});
+  closeModal();toast('Booking added!');
+}
+async function saveEditBk(id){
+  const prop=document.getElementById('bk-prop').value;
+  const cin=document.getElementById('bk-in').value.trim();
+  const cout=document.getElementById('bk-out').value.trim();
+  const notes=document.getElementById('bk-notes').value.trim();
+  if(!prop||!cin||!cout){toast('Please fill in property and dates.');return;}
+  const inDate=new Date(cin);const outDate=new Date(cout);
+  if(isNaN(inDate)||isNaN(outDate)){toast('Please enter valid dates (MM/DD/YYYY).');return;}
+  await calRef.child(id).update({propertyId:prop,checkIn:inDate.toISOString(),checkOut:outDate.toISOString(),notes});
+  closeModal();toast('Booking updated!');
+}
+async function delBk(id){
+  if(!confirm('Delete this booking?'))return;
+  await calRef.child(id).remove();closeModal();toast('Booking removed.');
+}
+
+function closeModal(){document.getElementById('mwrap').classList.remove('open');}
+document.getElementById('mwrap').addEventListener('click',e=>{if(e.target===e.currentTarget)closeModal();});
+window.addEventListener('load',()=>{
+  document.getElementById('loading-screen').style.display='none';
+  document.getElementById('login-screen').style.display='flex';
+});
+</script>
+</body>
+</html>
